@@ -32,9 +32,9 @@ class AssistantWatcherService : AccessibilityService() {
     /** Last logged screen text per package, so the debug log only records changes. */
     private val lastSnapshot = HashMap<String, String>()
 
-    /** Lines seen in the previous scan per package, and when, to tell new lines from old ones. */
-    private val previousLines = HashMap<String, Set<String>>()
-    private val previousScanAt = HashMap<String, Long>()
+    /** Lines seen in the previous scan, per window id. A window seen for the first time has no
+     *  entry: its lines (chat history, an old transcript) are the baseline, not a request. */
+    private val previousLines = HashMap<Int, Set<String>>()
 
     private val scanRunnable = Runnable {
         scanPending = false
@@ -69,46 +69,64 @@ class AssistantWatcherService : AccessibilityService() {
     private fun scan() {
         val watchAll = settings.watchAllApps
         val watched = settings.watchedPackages.toSet()
-        val linesByPackage = LinkedHashMap<String, MutableList<String>>()
+        val screens = ArrayList<Screen>()
 
-        val windowRoots: List<AccessibilityNodeInfo> = try {
-            windows.mapNotNull { it.root }
+        val windowList = try {
+            windows
         } catch (e: Exception) {
             EventLog.add(this, "Could not read windows: ${e.message}")
             emptyList()
         }
-        val roots = windowRoots.ifEmpty { listOfNotNull(rootInActiveWindow) }
-
-        for (root in roots) {
+        for (window in windowList) {
+            val root = window.root ?: continue
             val pkg = root.packageName?.toString() ?: continue
             if (!watchAll && pkg !in watched) continue
-            collectText(root, linesByPackage.getOrPut(pkg) { mutableListOf() }, depth = 0)
+            screens.add(Screen(window.id, pkg, collectLines(root)))
+        }
+        if (windowList.isEmpty()) {
+            rootInActiveWindow?.let { root ->
+                val pkg = root.packageName?.toString()
+                if (pkg != null && (watchAll || pkg in watched)) screens.add(Screen(NO_WINDOW_ID, pkg, collectLines(root)))
+            }
         }
 
-        if (settings.debugLog) logChanges(linesByPackage)
+        if (settings.debugLog) logChanges(screens)
 
-        // Only a line that appears while we watch is a new request. On the first scan of a window
-        // (nothing seen from it recently) every line is old: chat history, a previous transcript.
-        val now = SystemClock.elapsedRealtime()
-        val newLinesByPackage = linesByPackage.mapValues { (pkg, lines) ->
-            val fresh = previousScanAt[pkg]?.let { now - it > FRESH_WINDOW_MS } ?: true
-            val previous = previousLines[pkg].orEmpty()
-            previousLines[pkg] = lines.toHashSet()
-            previousScanAt[pkg] = now
-            if (fresh) emptyList() else lines.filter { it !in previous }
+        // A line is a new request only if it appeared in a window we had already seen: on the
+        // first sight of a window, whatever it shows (chat history, an old transcript) is old.
+        val newLines = ArrayList<Pair<Screen, String>>()
+        for (screen in screens) {
+            val previous = previousLines[screen.windowId]
+            if (previous != null) {
+                screen.lines.filter { it !in previous }.forEach { newLines.add(screen to it) }
+            } else if (settings.debugLog) {
+                EventLog.add(this, "FIRST [${screen.pkg}#${screen.windowId}] ${screen.lines.size} lines taken as old")
+            }
+            previousLines[screen.windowId] = screen.lines.toHashSet()
+        }
+        val liveIds = screens.map { it.windowId }.toSet()
+        previousLines.keys.retainAll(liveIds)
+
+        if (settings.debugLog) {
+            newLines.take(MAX_LOGGED_LINES).forEach { (screen, line) ->
+                EventLog.add(this, "NEW [${screen.pkg}#${screen.windowId}] ${line.take(MAX_LOGGED_CHARS)}")
+            }
         }
         if (!settings.enabled) return
 
         val parser = currentParser()
-        for ((_, lines) in newLinesByPackage) {
-            for (line in lines) {
-                val match = parser.parse(line) ?: continue
-                if (isDuplicate(match.query)) return
-                handle(match)
-                return
-            }
+        for ((_, line) in newLines) {
+            val match = parser.parse(line) ?: continue
+            if (isDuplicate(match.query)) return
+            handle(match)
+            return
         }
     }
+
+    private class Screen(val windowId: Int, val pkg: String, val lines: List<String>)
+
+    private fun collectLines(root: AccessibilityNodeInfo): List<String> =
+        ArrayList<String>().also { collectText(root, it, depth = 0) }
 
     private fun handle(match: CommandParser.Match) {
         lastQuery = match.query
@@ -153,13 +171,14 @@ class AssistantWatcherService : AccessibilityService() {
         }
     }
 
-    private fun logChanges(linesByPackage: Map<String, List<String>>) {
-        for ((pkg, lines) in linesByPackage) {
-            if (lines.isEmpty()) continue
-            val snapshot = lines.take(MAX_LOGGED_LINES).joinToString(" | ") { it.take(MAX_LOGGED_CHARS) }
-            if (lastSnapshot[pkg] == snapshot) continue
-            lastSnapshot[pkg] = snapshot
-            EventLog.add(this, "[$pkg] $snapshot")
+    private fun logChanges(screens: List<Screen>) {
+        for (screen in screens) {
+            if (screen.lines.isEmpty()) continue
+            val key = "${screen.pkg}#${screen.windowId}"
+            val snapshot = screen.lines.take(MAX_LOGGED_LINES).joinToString(" | ") { it.take(MAX_LOGGED_CHARS) }
+            if (lastSnapshot[key] == snapshot) continue
+            lastSnapshot[key] = snapshot
+            EventLog.add(this, "[$key] $snapshot")
         }
     }
 
@@ -170,7 +189,7 @@ class AssistantWatcherService : AccessibilityService() {
         private const val SCAN_DELAY_MS = 400L
         private const val PLAY_DELAY_MS = 350L
         private const val DUPLICATE_WINDOW_MS = 15_000L
-        private const val FRESH_WINDOW_MS = 20_000L
+        private const val NO_WINDOW_ID = -1
         private const val MAX_DEPTH = 40
         private const val MAX_LINES = 200
         private const val MAX_LOGGED_LINES = 15
