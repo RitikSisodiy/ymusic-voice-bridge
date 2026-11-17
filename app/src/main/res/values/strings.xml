@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">YMusic Voice Bridge</string>
+    <string name="accessibility_label">YMusic Voice Bridge</string>
+    <string name="accessibility_description">Reads the assistant\'s on-screen transcript. When you say \"play [song] on YMusic\", it closes the assistant and plays the song in YMusic. Every other command is left to the assistant. Nothing is sent off the device.</string>
+
+    <string name="section_status">Status</string>
+    <string name="service_on">Accessibility service: ON</string>
+    <string name="service_off">Accessibility service: OFF — turn it on to start</string>
+    <string name="open_accessibility_settings">Open accessibility settings</string>
+
+    <string name="section_behavior">Behavior</string>
+    <string name="intercept_enabled">Intercept \"play … on YMusic\"</string>
+    <string name="close_assistant">Close the assistant after a match</string>
+    <string name="debug_log">Debug log (record assistant screen text)</string>
+    <string name="watch_all_apps">Watch all apps (debug, to find the assistant\'s package)</string>
+
+    <string name="section_method">How to start playback</string>
+    <string name="method_session">Media session (no screen, works when locked)</string>
+    <string name="method_intent">Open YMusic (play-from-search intent)</string>
+
+    <string name="section_advanced">Advanced</string>
+    <string name="target_package">Player package</string>
+    <string name="target_service">Player media service class</string>
+    <string name="watched_packages">Assistant packages (comma separated)</string>
+    <string name="aliases">App names to listen for (comma separated)</string>
+    <string name="save">Save</string>
+    <string name="saved">Saved</string>
+    <string name="reset_defaults">Reset to defaults</string>
+
+    <string name="section_test">Test</string>
+    <string name="test_query_hint">Song to play, e.g. Arijit Singh</string>
+    <string name="test_play">Test play</string>
+    <string name="test_phrase_hint">Phrase, e.g. play Arijit Singh on YMusic</string>
+    <string name="test_phrase">Test phrase</string>
+    <string name="phrase_match">Match → \"%1$s\"</string>
+    <string name="phrase_no_match">No match</string>
+
+    <string name="section_log">Log</string>
+    <string name="refresh">Refresh</string>
+    <string name="clear">Clear</string>
+    <string name="share">Share</string>
+    <string name="log_empty">(empty)</string>
+</resources>

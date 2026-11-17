@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- Status -->
+        <TextView
+            style="@android:style/TextAppearance.Material.Subhead"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/section_status"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/serviceStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp" />
+
+        <Button
+            android:id="@+id/openAccessibility"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/open_accessibility_settings" />
+
+        <!-- Behavior -->
+        <TextView
+            style="@android:style/TextAppearance.Material.Subhead"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingTop="16dp"
+            android:text="@string/section_behavior"
+            android:textStyle="bold" />
+
+        <Switch
+            android:id="@+id/switchEnabled"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp"
+            android:text="@string/intercept_enabled" />
+
+        <Switch
+            android:id="@+id/switchCloseAssistant"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp"
+            android:text="@string/close_assistant" />
+
+        <Switch
+            android:id="@+id/switchDebug"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp"
+            android:text="@string/debug_log" />
+
+        <Switch
+            android:id="@+id/switchWatchAll"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp"
+            android:text="@string/watch_all_apps" />
+
+        <!-- Method -->
+        <TextView
+            style="@android:style/TextAppearance.Material.Subhead"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingTop="16dp"
+            android:text="@string/section_method"
+            android:textStyle="bold" />
+
+        <RadioGroup
+            android:id="@+id/methodGroup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <RadioButton
+                android:id="@+id/methodSession"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/method_session" />
+
+            <RadioButton
+                android:id="@+id/methodIntent"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/method_intent" />
+        </RadioGroup>
+
+        <!-- Test -->
+        <TextView
+            style="@android:style/TextAppearance.Material.Subhead"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingTop="16dp"
+            android:text="@string/section_test"
+            android:textStyle="bold" />
+
+        <EditText
+            android:id="@+id/testQuery"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/test_query_hint"
+            android:importantForAutofill="no"
+            android:inputType="text" />
+
+        <Button
+            android:id="@+id/testPlay"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/test_play" />
+
+        <EditText
+            android:id="@+id/testPhrase"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/test_phrase_hint"
+            android:importantForAutofill="no"
+            android:inputType="text" />
+
+        <Button
+            android:id="@+id/testPhraseButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/test_phrase" />
+
+        <TextView
+            android:id="@+id/phraseResult"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
+        <!-- Advanced -->
+        <TextView
+            style="@android:style/TextAppearance.Material.Subhead"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingTop="16dp"
+            android:text="@string/section_advanced"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingTop="8dp"
+            android:text="@string/target_package" />
+
+        <EditText
+            android:id="@+id/targetPackage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:importantForAutofill="no"
+            android:inputType="text" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingTop="8dp"
+            android:text="@string/target_service" />
+
+        <EditText
+            android:id="@+id/targetService"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:importantForAutofill="no"
+            android:inputType="text" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingTop="8dp"
+            android:text="@string/watched_packages" />
+
+        <EditText
+            android:id="@+id/watchedPackages"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:importantForAutofill="no"
+            android:inputType="textMultiLine" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingTop="8dp"
+            android:text="@string/aliases" />
+
+        <EditText
+            android:id="@+id/aliases"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:importantForAutofill="no"
+            android:inputType="textMultiLine" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/save"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/save" />
+
+            <Button
+                android:id="@+id/resetDefaults"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/reset_defaults" />
+        </LinearLayout>
+
+        <!-- Log -->
+        <TextView
+            style="@android:style/TextAppearance.Material.Subhead"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingTop="16dp"
+            android:text="@string/section_log"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/logRefresh"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/refresh" />
+
+            <Button
+                android:id="@+id/logClear"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/clear" />
+
+            <Button
+                android:id="@+id/logShare"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/share" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/logView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="monospace"
+            android:textIsSelectable="true"
+            android:textSize="11sp" />
+    </LinearLayout>
+</ScrollView>
