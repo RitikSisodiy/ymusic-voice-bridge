@@ -24,12 +24,14 @@ jobs:
         run: ./gradlew --no-daemon :app:testDebugUnitTest
 
       - name: Build APK
-        run: ./gradlew --no-daemon :app:assembleDebug
+        run: ./gradlew --no-daemon :app:assembleDebug :probe:assembleDebug
 
       - uses: actions/upload-artifact@v4
         with:
           name: ymusic-voice-bridge-apk
-          path: app/build/outputs/apk/debug/*.apk
+          path: |
+            app/build/outputs/apk/debug/*.apk
+            probe/build/outputs/apk/debug/*.apk
 
       - name: Publish APK to the "latest" release
         if: github.ref == 'refs/heads/main'
@@ -37,5 +39,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           cp app/build/outputs/apk/debug/app-debug.apk YMusicVoiceBridge.apk
+          cp probe/build/outputs/apk/debug/probe-debug.apk YouTubeMusicProbe.apk
           gh release delete latest --yes --cleanup-tag || true
-          gh release create latest YMusicVoiceBridge.apk --title "Latest build" --notes "Built from ${GITHUB_SHA::7}."
+          gh release create latest YMusicVoiceBridge.apk YouTubeMusicProbe.apk --title "Latest build" --notes "Built from ${GITHUB_SHA::7}."

@@ -15,4 +15,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "YMusicVoiceBridge"
-include(":app")
+include(":app", ":probe")
