@@ -56,11 +56,6 @@ class ProbeMediaService : MediaBrowserService() {
         result.sendResult(mutableListOf())
     }
 
-    override fun onSearch(query: String, extras: Bundle?, result: MediaBrowserService.Result<MutableList<MediaBrowser.MediaItem>>) {
-        ProbeLog.add(this, "SERVICE onSearch \"$query\" extras=${ProbeLog.describe(extras)}")
-        result.sendResult(mutableListOf())
-    }
-
     private inner class Callback : MediaSession.Callback() {
         private fun caller(): String {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) return "?"
