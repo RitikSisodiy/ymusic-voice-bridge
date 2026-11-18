@@ -68,7 +68,13 @@ class ProbeMediaService : MediaBrowserService() {
 
         override fun onPlayFromSearch(query: String?, extras: Bundle?) {
             ProbeLog.add(this@ProbeMediaService, "SESSION playFromSearch from=${caller()} \"$query\" extras=${ProbeLog.describe(extras)}")
-            if (!query.isNullOrBlank()) Forwarder.searchViaSession(this@ProbeMediaService, query)
+            if (query.isNullOrBlank()) return
+            val spotify = Forwarder.spotifyRequest(Uri.parse(query.trim()))
+            if (spotify != null) {
+                Forwarder.playSpotify(this@ProbeMediaService, spotify, viaSession = true)
+            } else {
+                Forwarder.searchViaSession(this@ProbeMediaService, query)
+            }
         }
 
         override fun onPrepareFromSearch(query: String?, extras: Bundle?) {
@@ -112,8 +118,13 @@ class ProbeMediaService : MediaBrowserService() {
             return super.onMediaButtonEvent(mediaButtonIntent)
         }
 
-        /** A YouTube link or bare video id: open it in YMusic, else search YMusic for the id. */
+        /** A Spotify id, a YouTube link or bare video id: play it in YMusic, else search YMusic for the id. */
         private fun playLinkOrId(uri: Uri?, id: String?) {
+            val spotify = Forwarder.spotifyRequest(uri)
+            if (spotify != null) {
+                Forwarder.playSpotify(this@ProbeMediaService, spotify, viaSession = true)
+                return
+            }
             val link = Forwarder.youtubeLink(uri) ?: Forwarder.videoIdLink(id)
             val opened = link != null && Forwarder.openLink(this@ProbeMediaService, link)
             if (!opened && !id.isNullOrBlank()) Forwarder.searchViaSession(this@ProbeMediaService, id)

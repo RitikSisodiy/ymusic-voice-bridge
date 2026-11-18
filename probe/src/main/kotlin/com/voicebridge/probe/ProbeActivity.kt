@@ -40,6 +40,13 @@ class ProbeActivity : Activity() {
         ProbeLog.add(this, "ACTIVITY from=${referrer ?: "?"} ${ProbeLog.describe(intent)}")
         if (intent == null || intent.action == Intent.ACTION_MAIN) return
 
+        val spotify = Forwarder.spotifyRequest(intent.data)
+            ?: intent.getStringExtra(Intent.EXTRA_TEXT)?.let(::firstLink)?.let { Forwarder.spotifyRequest(it) }
+        if (spotify != null) {
+            Forwarder.playSpotify(this, spotify, viaSession = false) { played -> if (played) finish() else refreshLog() }
+            return
+        }
+
         val link = Forwarder.youtubeLink(intent.data)
             ?: intent.getStringExtra(Intent.EXTRA_TEXT)?.let(::firstLink)?.let { Forwarder.youtubeLink(it) }
         val query = intent.getStringExtra(SearchManager.QUERY)?.takeIf { it.isNotBlank() }
@@ -72,8 +79,9 @@ class ProbeActivity : Activity() {
         }
         column.addView(
             TextView(this).apply {
-                text = "Probe: records what the assistant sends to \"YouTube Music\" and forwards it to YMusic V4. " +
-                    "Ask Gemini: \"play Arijit Singh on YouTube Music\", then share this log."
+                val name = getString(R.string.app_name)
+                text = "Probe: records what the assistant sends to \"$name\" and forwards it to YMusic V4. " +
+                    "Ask Gemini: \"play Arijit Singh on $name\", then share this log."
             },
         )
         val buttons = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
