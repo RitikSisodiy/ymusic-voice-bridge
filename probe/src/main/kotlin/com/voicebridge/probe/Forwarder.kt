@@ -98,21 +98,40 @@ object Forwarder {
         false
     }
 
-    /** What a Spotify uri/link asks for: words to search, or an item link whose title is looked up. */
-    class SpotifyRequest(val searchText: String?, val itemLink: String?) {
-        override fun toString() = searchText?.let { "search \"$it\"" } ?: "item $itemLink"
+    /**
+     * What a Spotify uri/link asks for: words to search, an item link whose title is looked up, or
+     * (Gemini's opaque `spotify:nl:` uris) candidate ids of unknown type, each tried as every type.
+     */
+    class SpotifyRequest(
+        val searchText: String?,
+        val itemLink: String?,
+        val candidateIds: List<String> = emptyList(),
+    ) {
+        override fun toString() = when {
+            searchText != null -> "search \"$searchText\""
+            itemLink != null -> "item $itemLink"
+            else -> "ids $candidateIds"
+        }
     }
 
-    private val SPOTIFY_TYPES = setOf("track", "album", "artist", "playlist", "show", "episode")
+    private val SPOTIFY_TYPES = listOf("track", "album", "playlist", "artist", "episode", "show")
     private val SPOTIFY_HOSTS = setOf("open.spotify.com", "spotify.link", "spotify.app.link")
+    private val BASE62_ID = Regex("(?<![0-9A-Za-z])[0-9A-Za-z]{22}(?![0-9A-Za-z])")
+    private const val BASE62 = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
     fun spotifyRequest(uri: Uri?): SpotifyRequest? {
         if (uri == null) return null
         if (uri.scheme == "spotify") {
             val parts = uri.schemeSpecificPart.split(':').filter { it.isNotEmpty() }
-            if (parts.firstOrNull() == "search") {
-                val text = URLDecoder.decode(parts.drop(1).joinToString(":"), "UTF-8").trim()
-                return text.takeIf { it.isNotEmpty() }?.let { SpotifyRequest(it, null) }
+            when (parts.firstOrNull()) {
+                "search" -> {
+                    val text = URLDecoder.decode(parts.drop(1).joinToString(":"), "UTF-8").trim()
+                    return text.takeIf { it.isNotEmpty() }?.let { SpotifyRequest(it, null) }
+                }
+                "nl" -> {
+                    val ids = nlCandidateIds(parts.drop(1).joinToString(":"))
+                    return ids.takeIf { it.isNotEmpty() }?.let { SpotifyRequest(null, null, it) }
+                }
             }
             val typeIndex = parts.indexOfFirst { it in SPOTIFY_TYPES }
             val id = parts.getOrNull(typeIndex + 1) ?: return null
@@ -131,6 +150,84 @@ object Forwarder {
     }
 
     /**
+     * Ids inside a `spotify:nl:<base64 protobuf>` payload: every 22-character base62 string in it,
+     * then every 16-byte field converted to base62 (Spotify's binary id form).
+     */
+    fun nlCandidateIds(payload: String): List<String> {
+        val bytes = try {
+            android.util.Base64.decode(payload.replace('-', '+').replace('_', '/'), android.util.Base64.DEFAULT)
+        } catch (e: IllegalArgumentException) {
+            return emptyList()
+        }
+        val ids = LinkedHashSet<String>()
+        BASE62_ID.findAll(String(bytes, Charsets.ISO_8859_1)).forEach { ids.add(it.value) }
+        sixteenByteFields(bytes).forEach { ids.add(toBase62(it)) }
+        return ids.toList()
+    }
+
+    /** Top-level length-delimited protobuf fields of exactly 16 bytes. */
+    private fun sixteenByteFields(bytes: ByteArray): List<ByteArray> {
+        val out = ArrayList<ByteArray>()
+        var i = 0
+        fun varint(): Long {
+            var result = 0L
+            var shift = 0
+            while (i < bytes.size) {
+                val b = bytes[i++].toInt() and 0xff
+                result = result or ((b and 0x7f).toLong() shl shift)
+                if (b and 0x80 == 0) return result
+                shift += 7
+                if (shift > 63) break
+            }
+            return -1
+        }
+        while (i < bytes.size) {
+            val key = varint()
+            if (key < 0) break
+            when ((key and 7).toInt()) {
+                0 -> if (varint() < 0) break
+                1 -> i += 8
+                2 -> {
+                    val length = varint()
+                    if (length < 0 || i + length > bytes.size) break
+                    if (length == 16L) out.add(bytes.copyOfRange(i, i + 16))
+                    i += length.toInt()
+                }
+                5 -> i += 4
+                else -> break
+            }
+        }
+        return out
+    }
+
+    private fun toBase62(bytes: ByteArray): String {
+        var n = java.math.BigInteger(1, bytes)
+        val base = java.math.BigInteger.valueOf(62)
+        val sb = StringBuilder()
+        while (n.signum() > 0) {
+            val qr = n.divideAndRemainder(base)
+            sb.append(BASE62[qr[1].toInt()])
+            n = qr[0]
+        }
+        return sb.reverse().toString().padStart(22, '0')
+    }
+
+    /** The first id × type pair Spotify's oEmbed can name, as "type id → title" (for the log) + title. */
+    private fun nameCandidates(context: Context, ids: List<String>): String? {
+        for (id in ids) {
+            for (type in SPOTIFY_TYPES) {
+                val title = spotifyTitle(context, "https://open.spotify.com/$type/$id", logFailures = false)
+                if (title != null) {
+                    ProbeLog.add(context, "Spotify: $id is a $type")
+                    return title
+                }
+            }
+        }
+        ProbeLog.add(context, "Spotify: no type named any of $ids")
+        return null
+    }
+
+    /**
      * Resolves [request] to words off the main thread, then plays them in YMusic through its
      * session ([viaSession], for a service) or its intent (for an activity). [onDone] runs on the
      * main thread with whether a play request went out.
@@ -138,7 +235,9 @@ object Forwarder {
     fun playSpotify(context: Context, request: SpotifyRequest, viaSession: Boolean, onDone: (Boolean) -> Unit = {}) {
         val handler = Handler(Looper.getMainLooper())
         Thread {
-            val text = request.searchText ?: request.itemLink?.let { spotifyTitle(context, it) }
+            val text = request.searchText
+                ?: request.itemLink?.let { spotifyTitle(context, it) }
+                ?: request.candidateIds.takeIf { it.isNotEmpty() }?.let { nameCandidates(context, it) }
             handler.post {
                 if (text.isNullOrBlank()) {
                     ProbeLog.add(context, "Spotify: could not name $request")
@@ -156,14 +255,14 @@ object Forwarder {
         }.start()
     }
 
-    private fun spotifyTitle(context: Context, link: String): String? {
+    private fun spotifyTitle(context: Context, link: String, logFailures: Boolean = true): String? {
         val url = URL("https://open.spotify.com/oembed?url=" + URLEncoder.encode(link, "UTF-8"))
         val connection = url.openConnection() as HttpURLConnection
         return try {
             connection.connectTimeout = 8_000
             connection.readTimeout = 8_000
             if (connection.responseCode != HttpURLConnection.HTTP_OK) {
-                ProbeLog.add(context, "Spotify oEmbed HTTP ${connection.responseCode} for $link")
+                if (logFailures) ProbeLog.add(context, "Spotify oEmbed HTTP ${connection.responseCode} for $link")
                 return null
             }
             val body = connection.inputStream.bufferedReader().use { it.readText() }
